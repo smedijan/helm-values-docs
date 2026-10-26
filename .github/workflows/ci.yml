@@ -26,7 +26,17 @@ jobs:
         with:
           go-version: "1.26.6"
       - name: Install imp
-        run: go install github.com/smedijan/go-imp/cmd/imp@latest
+        env:
+          IMP_VERSION: 0.7.1
+          IMP_SHA256: a44452b55e6a28056415abc52867029ec27a6f9c9183e3ccca5679ae85901e27
+        run: |
+          archive="imp_${IMP_VERSION}_linux_amd64.tar.gz"
+          url="https://github.com/smedijan/go-imp/releases/download/v${IMP_VERSION}/${archive}"
+          curl --fail --location --silent --show-error "$url" --output "$RUNNER_TEMP/$archive"
+          echo "$IMP_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --status
+          mkdir -p "$RUNNER_TEMP/imp"
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP/imp" imp
+          echo "$RUNNER_TEMP/imp" >> "$GITHUB_PATH"
       - name: Run imp
         run: imp run --silent
 
