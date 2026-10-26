@@ -1,4 +1,4 @@
-package app_test
+package usecase_test
 
 import (
 	"context"
@@ -8,12 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smedijan/helm-values-docs/internal/adapters/out/filesystem"
-	"github.com/smedijan/helm-values-docs/internal/adapters/out/jsonschema"
-	"github.com/smedijan/helm-values-docs/internal/adapters/out/markdown"
-	"github.com/smedijan/helm-values-docs/internal/adapters/out/yamlvalues"
-	"github.com/smedijan/helm-values-docs/internal/app"
-	inport "github.com/smedijan/helm-values-docs/internal/ports/in"
+	"github.com/smedijan/helm-values-docs/internal/usecase"
 )
 
 func TestDocumentationLifecycle(t *testing.T) {
@@ -24,16 +19,10 @@ func TestDocumentationLifecycle(t *testing.T) {
 	writeFile(t, schemaPath, `{"type":"object","required":["enabled"],"properties":{"enabled":{"type":"boolean","description":"Enable the feature"}}}`)
 	writeFile(t, valuesPath, "enabled: true\n")
 
-	service := app.New(jsonschema.Loader{}, yamlvalues.Adapter{}, markdown.Adapter{}, filesystem.TemplateAdapter{}, filesystem.Store{})
-	request := inport.Request{
-		SchemaPath:  schemaPath,
-		ValuesPaths: []string{valuesPath},
-		OutputPath:  outputPath,
-	}
-	if err := service.Render(context.Background(), request); err != nil {
+	request := usecase.Request{SchemaPath: schemaPath, ValuesPaths: []string{valuesPath}, OutputPath: outputPath}
+	if err := usecase.Render(context.Background(), request); err != nil {
 		t.Fatalf("Render() error = %v", err)
 	}
-
 	document, err := os.ReadFile(outputPath)
 	if err != nil {
 		t.Fatal(err)
@@ -42,22 +31,20 @@ func TestDocumentationLifecycle(t *testing.T) {
 		t.Fatalf("rendered documentation does not describe the configured value:\n%s", document)
 	}
 
-	current, err := service.Check(context.Background(), request)
+	current, err := usecase.Check(context.Background(), request)
 	if err != nil || !current {
 		t.Fatalf("Check() = (%v, %v), want (true, nil)", current, err)
 	}
-
 	writeFile(t, outputPath, "stale documentation\n")
-	current, err = service.Check(context.Background(), request)
+	current, err = usecase.Check(context.Background(), request)
 	if err != nil || current {
 		t.Fatalf("Check() for stale output = (%v, %v), want (false, nil)", current, err)
 	}
-
 	if err := os.Remove(outputPath); err != nil {
 		t.Fatal(err)
 	}
-	_, err = service.Check(context.Background(), request)
-	if !errors.Is(err, inport.ErrOutputMissing) {
+	_, err = usecase.Check(context.Background(), request)
+	if !errors.Is(err, usecase.ErrOutputMissing) {
 		t.Fatalf("Check() for missing output error = %v, want ErrOutputMissing", err)
 	}
 }
@@ -72,13 +59,7 @@ func TestRenderAcceptsAnEmptyTemplate(t *testing.T) {
 	writeFile(t, valuesPath, "{}\n")
 	writeFile(t, templatePath, "")
 
-	service := app.New(jsonschema.Loader{}, yamlvalues.Adapter{}, markdown.Adapter{}, filesystem.TemplateAdapter{}, filesystem.Store{})
-	err := service.Render(context.Background(), inport.Request{
-		SchemaPath:   schemaPath,
-		ValuesPaths:  []string{valuesPath},
-		OutputPath:   outputPath,
-		TemplatePath: templatePath,
-	})
+	err := usecase.Render(context.Background(), usecase.Request{SchemaPath: schemaPath, ValuesPaths: []string{valuesPath}, OutputPath: outputPath, TemplatePath: templatePath})
 	if err != nil {
 		t.Fatalf("Render() with an empty template error = %v", err)
 	}
@@ -98,13 +79,7 @@ func TestRenderDoesNotReplaceOutputWhenTemplateFails(t *testing.T) {
 	writeFile(t, outputPath, "previous documentation\n")
 	writeFile(t, templatePath, "{{.Missing}}")
 
-	service := app.New(jsonschema.Loader{}, yamlvalues.Adapter{}, markdown.Adapter{}, filesystem.TemplateAdapter{}, filesystem.Store{})
-	err := service.Render(context.Background(), inport.Request{
-		SchemaPath:   schemaPath,
-		ValuesPaths:  []string{valuesPath},
-		OutputPath:   outputPath,
-		TemplatePath: templatePath,
-	})
+	err := usecase.Render(context.Background(), usecase.Request{SchemaPath: schemaPath, ValuesPaths: []string{valuesPath}, OutputPath: outputPath, TemplatePath: templatePath})
 	if err == nil || !strings.Contains(err.Error(), templatePath) {
 		t.Fatalf("Render() error = %v, want a template execution error naming %q", err, templatePath)
 	}
@@ -121,14 +96,9 @@ func TestRenderHonorsCancellationWithoutCreatingOutput(t *testing.T) {
 	writeFile(t, schemaPath, `{"type":"object"}`)
 	writeFile(t, valuesPath, "{}\n")
 
-	service := app.New(jsonschema.Loader{}, yamlvalues.Adapter{}, markdown.Adapter{}, filesystem.TemplateAdapter{}, filesystem.Store{})
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	err := service.Render(ctx, inport.Request{
-		SchemaPath:  schemaPath,
-		ValuesPaths: []string{valuesPath},
-		OutputPath:  outputPath,
-	})
+	err := usecase.Render(ctx, usecase.Request{SchemaPath: schemaPath, ValuesPaths: []string{valuesPath}, OutputPath: outputPath})
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("Render() error = %v, want context.Canceled", err)
 	}

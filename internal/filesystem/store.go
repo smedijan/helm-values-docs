@@ -1,4 +1,4 @@
-// Package filesystem adapts local files to document storage and template ports.
+// Package filesystem reads templates and persists generated documents.
 package filesystem
 
 import (
@@ -7,10 +7,8 @@ import (
 	"path/filepath"
 )
 
-// Store reads and atomically writes local documents.
-type Store struct{}
-
-func (Store) Read(path string) ([]byte, error) {
+// Read reads a generated document from disk.
+func Read(path string) ([]byte, error) {
 	data, err := os.ReadFile(path) // #nosec G304 -- path is explicitly provided by the caller.
 	if err != nil {
 		return nil, fmt.Errorf("read output %q: %w", path, err)
@@ -18,7 +16,8 @@ func (Store) Read(path string) ([]byte, error) {
 	return data, nil
 }
 
-func (Store) WriteAtomic(path string, data []byte) error {
+// WriteAtomic replaces a generated document after writing it successfully.
+func WriteAtomic(path string, data []byte) error {
 	dir := filepath.Dir(path)
 	file, err := os.CreateTemp(dir, ".hvd-*")
 	if err != nil {

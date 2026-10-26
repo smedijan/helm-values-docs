@@ -1,5 +1,5 @@
-// Package jsonschema translates JSON Schema documents into the domain model.
-package jsonschema
+// Package schema translates JSON Schema documents into the domain model.
+package schema
 
 import (
 	"encoding/json"
@@ -26,12 +26,13 @@ func Parse(data []byte) (*domain.Schema, error) {
 }
 
 func parseObject(raw map[string]json.RawMessage, path string, definitions map[string]json.RawMessage) (*domain.Schema, error) {
+	handled := make(map[string]bool)
 	result := &domain.Schema{
 		Properties:  make(map[string]*domain.Schema),
 		Required:    make(map[string]bool),
 		Constraints: make(map[string]any),
 	}
-	if value, ok := raw["$ref"]; ok {
+	if value, ok := keyword(raw, handled, "$ref"); ok {
 		if err := json.Unmarshal(value, &result.Reference); err != nil {
 			return nil, fmt.Errorf("schema %s: $ref must be a string", path)
 		}
@@ -49,7 +50,7 @@ func parseObject(raw map[string]json.RawMessage, path string, definitions map[st
 			if err != nil {
 				return nil, err
 			}
-			if description, ok := raw["description"]; ok {
+			if description, ok := keyword(raw, handled, "description"); ok {
 				if err := json.Unmarshal(description, &resolved.Description); err != nil {
 					return nil, fmt.Errorf("schema %s: description must be a string", path)
 				}
@@ -57,7 +58,7 @@ func parseObject(raw map[string]json.RawMessage, path string, definitions map[st
 			return resolved, nil
 		}
 	}
-	if value, ok := raw["type"]; ok {
+	if value, ok := keyword(raw, handled, "type"); ok {
 		if err := json.Unmarshal(value, &result.Types); err != nil {
 			var one string
 			if err := json.Unmarshal(value, &one); err != nil {
@@ -69,24 +70,24 @@ func parseObject(raw map[string]json.RawMessage, path string, definitions map[st
 			return nil, fmt.Errorf("schema %s: type must not be empty", path)
 		}
 	}
-	if value, ok := raw["description"]; ok {
+	if value, ok := keyword(raw, handled, "description"); ok {
 		if err := json.Unmarshal(value, &result.Description); err != nil {
 			return nil, fmt.Errorf("schema %s: description must be a string", path)
 		}
 	}
-	if value, ok := raw["title"]; ok {
+	if value, ok := keyword(raw, handled, "title"); ok {
 		if err := json.Unmarshal(value, &result.Title); err != nil {
 			return nil, fmt.Errorf("schema %s: title must be a string", path)
 		}
 	}
-	if value, ok := raw["default"]; ok {
+	if value, ok := keyword(raw, handled, "default"); ok {
 		if err := json.Unmarshal(value, &result.Default); err != nil {
 			return nil, fmt.Errorf("schema %s: invalid default: %w", path, err)
 		}
 		result.HasDefault = true
 	}
 	for _, field := range []string{"enum", "examples"} {
-		if value, ok := raw[field]; ok {
+		if value, ok := keyword(raw, handled, field); ok {
 			var items []any
 			if err := json.Unmarshal(value, &items); err != nil {
 				return nil, fmt.Errorf("schema %s: %s must be an array", path, field)
@@ -98,7 +99,7 @@ func parseObject(raw map[string]json.RawMessage, path string, definitions map[st
 			}
 		}
 	}
-	if value, ok := raw["required"]; ok {
+	if value, ok := keyword(raw, handled, "required"); ok {
 		var required []string
 		if err := json.Unmarshal(value, &required); err != nil {
 			return nil, fmt.Errorf("schema %s: required must be an array of strings", path)
@@ -107,7 +108,7 @@ func parseObject(raw map[string]json.RawMessage, path string, definitions map[st
 			result.Required[name] = true
 		}
 	}
-	if value, ok := raw["properties"]; ok {
+	if value, ok := keyword(raw, handled, "properties"); ok {
 		var properties map[string]json.RawMessage
 		if err := json.Unmarshal(value, &properties); err != nil || properties == nil {
 			return nil, fmt.Errorf("schema %s: properties must be an object", path)
@@ -124,7 +125,7 @@ func parseObject(raw map[string]json.RawMessage, path string, definitions map[st
 			result.Properties[name] = child
 		}
 	}
-	if value, ok := raw["oneOf"]; ok {
+	if value, ok := keyword(raw, handled, "oneOf"); ok {
 		var branches []json.RawMessage
 		if err := json.Unmarshal(value, &branches); err != nil || len(branches) == 0 {
 			return nil, fmt.Errorf("schema %s: oneOf must be a non-empty array of schemas", path)
@@ -141,7 +142,7 @@ func parseObject(raw map[string]json.RawMessage, path string, definitions map[st
 			result.OneOf = append(result.OneOf, parsed)
 		}
 	}
-	if value, ok := raw["not"]; ok {
+	if value, ok := keyword(raw, handled, "not"); ok {
 		var object map[string]json.RawMessage
 		if err := json.Unmarshal(value, &object); err != nil || object == nil {
 			return nil, fmt.Errorf("schema %s: not must be a schema object", path)
@@ -152,7 +153,7 @@ func parseObject(raw map[string]json.RawMessage, path string, definitions map[st
 		}
 		result.Not = parsed
 	}
-	if value, ok := raw["items"]; ok {
+	if value, ok := keyword(raw, handled, "items"); ok {
 		var object map[string]json.RawMessage
 		if err := json.Unmarshal(value, &object); err != nil || object == nil {
 			return nil, fmt.Errorf("schema %s: items must be an object", path)
@@ -163,7 +164,7 @@ func parseObject(raw map[string]json.RawMessage, path string, definitions map[st
 		}
 		result.Items = items
 	}
-	if value, ok := raw["additionalProperties"]; ok {
+	if value, ok := keyword(raw, handled, "additionalProperties"); ok {
 		var allowed bool
 		if err := json.Unmarshal(value, &allowed); err == nil {
 			result.AdditionalProperties = &allowed
@@ -180,7 +181,7 @@ func parseObject(raw map[string]json.RawMessage, path string, definitions map[st
 		}
 	}
 	for _, key := range []string{"minLength", "maxLength", "pattern", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf", "minItems", "maxItems", "uniqueItems", "format"} {
-		if value, ok := raw[key]; ok {
+		if value, ok := keyword(raw, handled, key); ok {
 			var decoded any
 			if err := json.Unmarshal(value, &decoded); err != nil {
 				return nil, fmt.Errorf("schema %s: invalid %s: %w", path, key, err)
@@ -189,7 +190,7 @@ func parseObject(raw map[string]json.RawMessage, path string, definitions map[st
 		}
 	}
 	for key := range raw {
-		if isUnsupported(key) {
+		if !handled[key] && !isIgnored(key) {
 			result.Unsupported = append(result.Unsupported, key)
 		}
 	}
@@ -197,18 +198,19 @@ func parseObject(raw map[string]json.RawMessage, path string, definitions map[st
 	return result, nil
 }
 
-func isUnsupported(key string) bool {
+func keyword(raw map[string]json.RawMessage, handled map[string]bool, name string) (json.RawMessage, bool) {
+	value, ok := raw[name]
+	if ok {
+		handled[name] = true
+	}
+	return value, ok
+}
+
+func isIgnored(key string) bool {
 	switch key {
-	case "$schema", "$id", "$comment", "title", "deprecated", "readOnly", "writeOnly", "definitions", "$ref", "additionalProperties":
-		// Supported keywords are rendered or resolved by the schema adapter.
-		return false
-	case "type", "description", "default", "enum", "examples", "required", "properties", "items", "oneOf", "not",
-		"minLength", "maxLength", "pattern", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum",
-		"multipleOf", "minItems", "maxItems", "uniqueItems", "format":
-		return false
-	default:
-		// Do not silently discard a keyword that this deliberately small model
-		// does not understand. The renderer will report it at its schema path.
+	case "$schema", "$id", "$comment", "deprecated", "readOnly", "writeOnly", "definitions":
 		return true
+	default:
+		return false
 	}
 }

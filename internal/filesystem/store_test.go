@@ -9,19 +9,18 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smedijan/helm-values-docs/internal/adapters/out/filesystem"
+	"github.com/smedijan/helm-values-docs/internal/filesystem"
 )
 
 func TestStorePersistsAndReadsGeneratedDocument(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "README.md")
-	store := filesystem.Store{}
 
 	for _, document := range [][]byte{[]byte("first version\n"), []byte("updated version\n")} {
-		if err := store.WriteAtomic(path, document); err != nil {
+		if err := filesystem.WriteAtomic(path, document); err != nil {
 			t.Fatalf("WriteAtomic() error = %v", err)
 		}
-		got, err := store.Read(path)
+		got, err := filesystem.Read(path)
 		if err != nil {
 			t.Fatalf("Read() error = %v", err)
 		}
@@ -32,7 +31,7 @@ func TestStorePersistsAndReadsGeneratedDocument(t *testing.T) {
 }
 
 func TestStoreReportsMissingDocument(t *testing.T) {
-	_, err := (filesystem.Store{}).Read(filepath.Join(t.TempDir(), "missing.md"))
+	_, err := filesystem.Read(filepath.Join(t.TempDir(), "missing.md"))
 	if !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("Read() error = %v, want an error matching fs.ErrNotExist", err)
 	}
@@ -45,7 +44,7 @@ func TestStoreDoesNotReplaceDirectoryWithDocument(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := (filesystem.Store{}).WriteAtomic(output, []byte("generated\n")); err == nil {
+	if err := filesystem.WriteAtomic(output, []byte("generated\n")); err == nil {
 		t.Fatal("WriteAtomic() replaced a directory")
 	}
 	info, err := os.Stat(output)
@@ -57,12 +56,11 @@ func TestStoreDoesNotReplaceDirectoryWithDocument(t *testing.T) {
 func TestTemplateComposerWrapsDocumentAndReportsInvalidTemplates(t *testing.T) {
 	dir := t.TempDir()
 	templatePath := filepath.Join(dir, "README.tmpl.md")
-	composer := filesystem.TemplateAdapter{}
 
 	if err := os.WriteFile(templatePath, []byte("# Values\n{{.API}}\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got, err := composer.Compose([]byte("| setting | true |\n"), templatePath)
+	got, err := filesystem.Compose([]byte("| setting | true |\n"), templatePath)
 	if err != nil {
 		t.Fatalf("Compose() error = %v", err)
 	}
@@ -73,7 +71,7 @@ func TestTemplateComposerWrapsDocumentAndReportsInvalidTemplates(t *testing.T) {
 	if err := os.WriteFile(templatePath, []byte("{{.Missing}}"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err = composer.Compose([]byte("document"), templatePath)
+	_, err = filesystem.Compose([]byte("document"), templatePath)
 	if err == nil || !strings.Contains(err.Error(), templatePath) {
 		t.Fatalf("Compose() error = %v, want an execution error naming the template", err)
 	}

@@ -1,8 +1,8 @@
 package markdown_test
 
 import (
-	"github.com/smedijan/helm-values-docs/internal/adapters/out/jsonschema"
-	"github.com/smedijan/helm-values-docs/internal/adapters/out/markdown"
+	"github.com/smedijan/helm-values-docs/internal/markdown"
+	"github.com/smedijan/helm-values-docs/internal/schema"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -11,7 +11,7 @@ import (
 )
 
 func TestRenderGolden(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{
+	model, err := schema.Parse([]byte(`{
 		"type":"object",
 		"required":["replicas"],
 		"properties":{
@@ -34,7 +34,7 @@ func TestRenderGolden(t *testing.T) {
 }
 
 func TestRenderIncludesDescriptionInPropertyDetailsTable(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{"properties":{"setting":{"type":"string","description":"First line | detail\nSecond line"}}}`))
+	model, err := schema.Parse([]byte(`{"properties":{"setting":{"type":"string","description":"First line | detail\nSecond line"}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func TestRenderIncludesDescriptionInPropertyDetailsTable(t *testing.T) {
 }
 
 func TestRenderContentsUsesReadableDynamicMapNames(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{"properties":{"apps":{"type":"object","additionalProperties":{"title":"app","type":"object","properties":{"tag":{"type":"string"}}}}}}`))
+	model, err := schema.Parse([]byte(`{"properties":{"apps":{"type":"object","additionalProperties":{"title":"app","type":"object","properties":{"tag":{"type":"string"}}}}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestRenderContentsUsesReadableDynamicMapNames(t *testing.T) {
 }
 
 func TestRenderLooksUpPropertyNamesContainingDots(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{"properties":{"a.b":{"type":"string"}}}`))
+	model, err := schema.Parse([]byte(`{"properties":{"a.b":{"type":"string"}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestRenderLooksUpPropertyNamesContainingDots(t *testing.T) {
 }
 
 func TestRenderUsesValuesAndIgnoresSchemaDefaults(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{"type":"object","default":{"enabled":true,"nested":{"count":1}},"properties":{"enabled":{"type":"boolean"},"nested":{"type":"object","properties":{"count":{"type":"integer"}}}}}`))
+	model, err := schema.Parse([]byte(`{"type":"object","default":{"enabled":true,"nested":{"count":1}},"properties":{"enabled":{"type":"boolean"},"nested":{"type":"object","properties":{"count":{"type":"integer"}}}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +100,7 @@ func TestRenderUsesValuesAndIgnoresSchemaDefaults(t *testing.T) {
 }
 
 func TestRenderDoesNotUseSchemaDefaultsWhenValuesAreEmpty(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{"type":"object","default":{"enabled":true,"nested":{"count":1}},"properties":{"enabled":{"type":"boolean"},"nested":{"type":"object","properties":{"count":{"type":"integer"}}}}}`))
+	model, err := schema.Parse([]byte(`{"type":"object","default":{"enabled":true,"nested":{"count":1}},"properties":{"enabled":{"type":"boolean"},"nested":{"type":"object","properties":{"count":{"type":"integer"}}}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestRenderDoesNotUseSchemaDefaultsWhenValuesAreEmpty(t *testing.T) {
 }
 
 func TestRenderEscapesAllPropertyPathSegments(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{"properties":{"parent":{"properties":{"a.b|c\"d":{"type":"string"}}}}}`))
+	model, err := schema.Parse([]byte(`{"properties":{"parent":{"properties":{"a.b|c\"d":{"type":"string"}}}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,7 @@ func TestRenderEscapesAllPropertyPathSegments(t *testing.T) {
 }
 
 func TestRenderReportsUnsupportedKeywordsAtTheirPaths(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{"additionalProperties":false,"properties":{"setting":{"const":"fixed","dependentRequired":{"x":["y"]}}}}`))
+	model, err := schema.Parse([]byte(`{"additionalProperties":false,"properties":{"setting":{"const":"fixed","dependentRequired":{"x":["y"]}}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,7 +153,7 @@ func TestRenderReportsUnsupportedKeywordsAtTheirPaths(t *testing.T) {
 }
 
 func TestRenderNonObjectRootDefaultRemainsMissing(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{"type":"object","default":false,"properties":{"enabled":{"type":"boolean"}}}`))
+	model, err := schema.Parse([]byte(`{"type":"object","default":false,"properties":{"enabled":{"type":"boolean"}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +193,7 @@ func assertApproval(t *testing.T, name string, got []byte) {
 }
 
 func TestRenderShowsInferredTypesAndEnumDetails(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{
+	model, err := schema.Parse([]byte(`{
 		"properties":{
 			"choices":{"type":"string","enum":["small","large"],"examples":["small"]},
 			"entries":{"items":{"type":"integer"}},
@@ -222,7 +222,7 @@ func TestRenderShowsInferredTypesAndEnumDetails(t *testing.T) {
 }
 
 func TestRenderListsAllSiblingPropertiesBeforeRenderingDetails(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{"properties":{"httpGateway":{"properties":{"gated":{"type":"boolean"},"private":{"type":"boolean"},"public":{"type":"boolean"}}}}}`))
+	model, err := schema.Parse([]byte(`{"properties":{"httpGateway":{"properties":{"gated":{"type":"boolean"},"private":{"type":"boolean"},"public":{"type":"boolean"}}}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,8 +243,22 @@ func TestRenderListsAllSiblingPropertiesBeforeRenderingDetails(t *testing.T) {
 	}
 }
 
+func TestRenderPropertySummaryUsesParentRequiredPolicy(t *testing.T) {
+	model, err := schema.Parse([]byte(`{"properties":{"parent":{"required":["child"],"properties":{"child":{"type":"string"}}}}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := markdown.Render(model, map[string]any{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsLine(string(got), "| [child](#parent_child) | `string` | Yes | — | — |") {
+		t.Fatalf("child required status missing from its parent's summary:\n%s", got)
+	}
+}
+
 func TestRenderDescribesOneOfAndNot(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{
+	model, err := schema.Parse([]byte(`{
 		"properties":{
 			"nats":{"properties":{
 				"user":{"description":"Bind one NATS user.","oneOf":[{"type":"string","minLength":1},{"type":"object","additionalProperties":true}]},
@@ -275,7 +289,7 @@ func TestRenderDescribesOneOfAndNot(t *testing.T) {
 }
 
 func TestRenderReportsUnsupportedRootConstructs(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{"patternProperties":{"^x":{"type":"string"}}}`))
+	model, err := schema.Parse([]byte(`{"patternProperties":{"^x":{"type":"string"}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,7 +303,7 @@ func TestRenderReportsUnsupportedRootConstructs(t *testing.T) {
 }
 
 func TestRenderEscapesCellsAndUsesDefaults(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{"properties":{"a|b":{"type":"string","default":"x|y"}}}`))
+	model, err := schema.Parse([]byte(`{"properties":{"a|b":{"type":"string","default":"x|y"}}}`))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -73,15 +73,10 @@ path.
 
 ## Architecture
 
-The implementation follows hexagonal architecture. `internal/domain` holds the
-schema model; `internal/ports/in` defines use cases and `internal/ports/out`
-defines the application's adapter interfaces. `internal/app` coordinates those
-ports. CLI, JSON Schema, YAML, Markdown, and filesystem implementations live in
-`internal/adapters/in` or `internal/adapters/out`. The executable is the
-composition root in `cmd/hvd`.
-
-`.go-arch-lint.yml` describes and enforces the allowed import direction. Run
-`go-arch-lint check` to validate it; `hk check` runs it alongside the Go checks.
+`internal/usecase` owns the render and check flows. Each use case composes the
+schema, values, Markdown, and filesystem packages directly; `internal/cli`
+parses commands and invokes those use cases. `internal/domain` contains the
+schema model. The executable entry point is `cmd/hvd`.
 
 ## Development
 

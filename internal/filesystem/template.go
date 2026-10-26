@@ -8,14 +8,12 @@ import (
 	"text/template"
 )
 
-// TemplateAdapter composes a document with an optional Markdown template.
-type TemplateAdapter struct{}
-
 type templateData struct {
 	API string
 }
 
-func (TemplateAdapter) Compose(api []byte, path string) ([]byte, error) {
+// Compose wraps generated Markdown in an optional template.
+func Compose(api []byte, path string) ([]byte, error) {
 	data, err := os.ReadFile(path) // #nosec G304 -- path is explicitly provided by the caller.
 	if err != nil {
 		return nil, fmt.Errorf("read template %q: %w", path, err)

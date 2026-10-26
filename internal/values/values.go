@@ -1,5 +1,5 @@
-// Package yamlvalues adapts ordered YAML values files to effective values.
-package yamlvalues
+// Package values loads and merges ordered YAML values files.
+package values
 
 import (
 	"fmt"
@@ -10,7 +10,8 @@ import (
 
 // LoadValues reads YAML files in order. Mapping values are merged recursively;
 // scalars and sequences from a later file replace earlier values.
-func LoadValues(paths []string) (map[string]any, error) {
+// Load reads YAML files in order and merges their mappings.
+func Load(paths []string) (map[string]any, error) {
 	result := make(map[string]any)
 	for _, path := range paths {
 		data, err := os.ReadFile(path) // #nosec G304 -- paths are explicitly supplied by the caller.
