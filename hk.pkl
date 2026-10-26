@@ -56,9 +56,9 @@ local full_checks = (fast_checks) {
         glob = "**/*.go"
         check = "coverage_file=$(mktemp); trap 'rm -f \"$coverage_file\"' EXIT; go test -coverpkg=./... -coverprofile=\"$coverage_file\" ./... && covgate -threshold=80 \"$coverage_file\""
     }
-    ["go-gremlins"] {
-        glob = List("**/*.go", ".gremlins.yaml")
-        check = "gremlins unleash"
+    ["go-imp"] {
+        glob = List("**/*.go", ".imp.yaml")
+        check = "imp run --silent"
     }
     ["go-sec"] = (Builtins.go_sec) {
         glob = "**/*.go"

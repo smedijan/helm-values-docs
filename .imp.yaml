@@ -1,5 +1,4 @@
-unleash:
-  output-statuses: lc
+run:
   threshold:
     efficacy: 80
     mutant-coverage: 80
