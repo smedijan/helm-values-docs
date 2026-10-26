@@ -1,4 +1,4 @@
-package jsonschema
+package schema
 
 import (
 	"fmt"
@@ -7,10 +7,8 @@ import (
 	"github.com/smedijan/helm-values-docs/internal/domain"
 )
 
-// Loader reads schema files and decodes them into the domain model.
-type Loader struct{}
-
-func (Loader) Load(path string) (*domain.Schema, error) {
+// Load reads a schema file and decodes it into the domain model.
+func Load(path string) (*domain.Schema, error) {
 	data, err := os.ReadFile(path) // #nosec G304 -- path is provided explicitly by the caller.
 	if err != nil {
 		return nil, fmt.Errorf("read schema %q: %w", path, err)

@@ -5,18 +5,20 @@ vendors:
   yaml: { in: gopkg.in/yaml.v3 }
 components:
   domain: { in: domain }
-  ports-in: { in: ports/in }
-  ports-out: { in: ports/out }
-  app: { in: app }
-  adapters-in: { in: adapters/in/** }
-  adapters-out: { in: adapters/out/** }
+  usecase: { in: usecase }
+  cli: { in: cli }
+  schema: { in: schema }
+  values: { in: values }
+  markdown: { in: markdown }
+  filesystem: { in: filesystem }
 deps:
-  app:
-    mayDependOn: [domain, ports-in, ports-out]
-  ports-out:
+  cli:
+    mayDependOn: [usecase]
+  usecase:
+    mayDependOn: [domain, schema, values, markdown, filesystem]
+  schema:
     mayDependOn: [domain]
-  adapters-in:
-    mayDependOn: [ports-in]
-  adapters-out:
+  markdown:
     mayDependOn: [domain]
+  values:
     canUse: [yaml]

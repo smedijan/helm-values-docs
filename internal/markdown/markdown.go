@@ -55,13 +55,8 @@ func renderTOC(b *strings.Builder, current *domain.Schema, name, path string, de
 	b.WriteString("](#")
 	b.WriteString(anchor(path))
 	b.WriteString(")\n")
-	children := current.PropertyNames()
-	if current.AdditionalSchema != nil && len(current.AdditionalSchema.Properties) > 0 {
-		children = append(children, additionalName(name, current.AdditionalSchema))
-	}
-	for _, child := range children {
-		childModel, childName := childSchema(current, child)
-		renderTOC(b, childModel, childName, childPath(path, childName), depth+1)
+	for _, child := range children(current, name) {
+		renderTOC(b, child.schema, child.name, childPath(path, child.name), depth+1)
 	}
 }
 
@@ -120,30 +115,26 @@ func renderProperty(b *strings.Builder, current *domain.Schema, name, path strin
 	for _, unsupported := range current.Unsupported {
 		*notes = append(*notes, fmt.Sprintf("`%s`: `%s`", path, unsupported))
 	}
-	children := current.PropertyNames()
-	if current.AdditionalSchema != nil && len(current.AdditionalSchema.Properties) > 0 {
-		children = append(children, additionalName(name, current.AdditionalSchema))
-	}
-	if len(children) > 0 {
+	childProperties := children(current, name)
+	if len(childProperties) > 0 {
 		b.WriteString("\n| Property | Type | Required | Default | Description |\n| --- | --- | --- | --- | --- |\n")
-		for _, child := range children {
-			childSchema, childName := childSchema(current, child)
-			childPath := childPath(path, childName)
+		for _, child := range childProperties {
+			childPath := childPath(path, child.name)
 			b.WriteString("| [")
-			b.WriteString(cell(childName))
+			b.WriteString(cell(child.name))
 			b.WriteString("](#")
 			b.WriteString(anchor(childPath))
 			b.WriteString(") | `")
-			b.WriteString(cell(typeName(childSchema)))
+			b.WriteString(cell(typeName(child.schema)))
 			b.WriteString("` | ")
-			if childSchema.Required[childName] {
+			if child.required {
 				b.WriteString("Yes")
 			} else {
 				b.WriteString("No")
 			}
 			b.WriteString(" | ")
-			childValue, childPresent := propertyValue(value, childName)
-			if len(childSchema.Properties) > 0 {
+			childValue, childPresent := propertyValue(value, child.name)
+			if len(child.schema.Properties) > 0 {
 				b.WriteString("See nested values")
 			} else if childPresent {
 				b.WriteString("`" + cell(domain.JSON(childValue)) + "`")
@@ -151,17 +142,16 @@ func renderProperty(b *strings.Builder, current *domain.Schema, name, path strin
 				b.WriteString("—")
 			}
 			b.WriteString(" | ")
-			if childSchema.Description != "" {
-				b.WriteString(cell(childSchema.Description))
+			if child.schema.Description != "" {
+				b.WriteString(cell(child.schema.Description))
 			} else {
 				b.WriteString("—")
 			}
 			b.WriteString(" |\n")
 		}
-		for _, child := range children {
-			childSchema, childName := childSchema(current, child)
-			childPath := childPath(path, childName)
-			renderProperty(b, childSchema, childName, childPath, value, current.Required[childName], depth+1, notes)
+		for _, child := range childProperties {
+			childPath := childPath(path, child.name)
+			renderProperty(b, child.schema, child.name, childPath, value, child.required, depth+1, notes)
 		}
 	}
 }
@@ -186,14 +176,23 @@ func renderAdditionalProperties(b *strings.Builder, schema *domain.Schema) {
 	}
 }
 
-func childSchema(schema *domain.Schema, name string) (*domain.Schema, string) {
-	if child, ok := schema.Properties[name]; ok {
-		return child, name
+type childProperty struct {
+	name     string
+	schema   *domain.Schema
+	required bool
+}
+
+func children(schema *domain.Schema, parentName string) []childProperty {
+	names := schema.PropertyNames()
+	result := make([]childProperty, 0, len(names)+1)
+	for _, name := range names {
+		result = append(result, childProperty{name: name, schema: schema.Properties[name], required: schema.Required[name]})
 	}
-	if schema.AdditionalSchema != nil {
-		return schema.AdditionalSchema, name
+	if schema.AdditionalSchema != nil && len(schema.AdditionalSchema.Properties) > 0 {
+		name := additionalName(parentName, schema.AdditionalSchema)
+		result = append(result, childProperty{name: name, schema: schema.AdditionalSchema, required: schema.Required[name]})
 	}
-	return nil, name
+	return result
 }
 
 func additionalName(parent string, schema *domain.Schema) string {

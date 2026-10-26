@@ -1,4 +1,4 @@
-package jsonschema_test
+package schema_test
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/smedijan/helm-values-docs/internal/adapters/out/jsonschema"
+	"github.com/smedijan/helm-values-docs/internal/schema"
 )
 
 func TestLoaderReadsAndDecodesSchema(t *testing.T) {
@@ -17,7 +17,7 @@ func TestLoaderReadsAndDecodesSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	model, err := (jsonschema.Loader{}).Load(path)
+	model, err := schema.Load(path)
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -28,7 +28,7 @@ func TestLoaderReadsAndDecodesSchema(t *testing.T) {
 
 func TestLoaderPreservesFileAndSchemaErrors(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "missing.json")
-	if _, err := (jsonschema.Loader{}).Load(missing); !errors.Is(err, fs.ErrNotExist) {
+	if _, err := schema.Load(missing); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("Load() missing-file error = %v, want fs.ErrNotExist", err)
 	}
 
@@ -36,7 +36,7 @@ func TestLoaderPreservesFileAndSchemaErrors(t *testing.T) {
 	if err := os.WriteFile(path, []byte("not JSON"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := (jsonschema.Loader{}).Load(path); err == nil || !strings.Contains(err.Error(), path) {
+	if _, err := schema.Load(path); err == nil || !strings.Contains(err.Error(), path) {
 		t.Fatalf("Load() malformed-schema error = %v, want an error naming %q", err, path)
 	}
 }

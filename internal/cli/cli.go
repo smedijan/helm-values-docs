@@ -1,4 +1,4 @@
-// Package cli adapts command-line requests to the inbound use-case port.
+// Package cli parses command-line requests and invokes their use cases.
 package cli
 
 import (
@@ -9,7 +9,7 @@ import (
 	"io"
 	"strings"
 
-	inport "github.com/smedijan/helm-values-docs/internal/ports/in"
+	"github.com/smedijan/helm-values-docs/internal/usecase"
 )
 
 type stringList []string
@@ -24,16 +24,16 @@ func (s *stringList) Set(value string) error {
 }
 
 // Run executes the CLI and returns its process exit status.
-func Run(args []string, stdout, stderr io.Writer, service inport.Documentation) int {
+func Run(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		usage(stderr)
 		return 2
 	}
 	switch args[0] {
 	case "render":
-		return render(args[1:], stderr, service)
+		return render(args[1:], stderr)
 	case "check":
-		return check(args[1:], stderr, service)
+		return check(args[1:], stderr)
 	default:
 		_, _ = fmt.Fprintf(stderr, "hvd: unknown command %q\n", args[0])
 		usage(stderr)
@@ -41,26 +41,26 @@ func Run(args []string, stdout, stderr io.Writer, service inport.Documentation) 
 	}
 }
 
-func render(args []string, stderr io.Writer, service inport.Documentation) int {
+func render(args []string, stderr io.Writer) int {
 	request, ok := parseFlags("render", args, stderr)
 	if !ok {
 		return 2
 	}
-	if err := service.Render(context.Background(), request); err != nil {
+	if err := usecase.Render(context.Background(), request); err != nil {
 		_, _ = fmt.Fprintf(stderr, "render: %v\n", err)
 		return 2
 	}
 	return 0
 }
 
-func check(args []string, stderr io.Writer, service inport.Documentation) int {
+func check(args []string, stderr io.Writer) int {
 	request, ok := parseFlags("check", args, stderr)
 	if !ok {
 		return 2
 	}
-	current, err := service.Check(context.Background(), request)
+	current, err := usecase.Check(context.Background(), request)
 	if err != nil {
-		if errors.Is(err, inport.ErrOutputMissing) {
+		if errors.Is(err, usecase.ErrOutputMissing) {
 			_, _ = fmt.Fprintf(stderr, "check: output %q is missing\n", request.OutputPath)
 			return 1
 		}
@@ -74,7 +74,7 @@ func check(args []string, stderr io.Writer, service inport.Documentation) int {
 	return 0
 }
 
-func parseFlags(name string, args []string, stderr io.Writer) (inport.Request, bool) {
+func parseFlags(name string, args []string, stderr io.Writer) (usecase.Request, bool) {
 	flags := flag.NewFlagSet(name, flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	schemaPath := flags.String("schema", "", "path to values.schema.json")
@@ -83,18 +83,18 @@ func parseFlags(name string, args []string, stderr io.Writer) (inport.Request, b
 	outputPath := flags.String("output", "", "path for generated Markdown")
 	templatePath := flags.String("template", "", "optional Markdown template path")
 	if err := flags.Parse(args); err != nil {
-		return inport.Request{}, false
+		return usecase.Request{}, false
 	}
 	if *schemaPath == "" || len(values) == 0 || *outputPath == "" {
 		_, _ = fmt.Fprintf(stderr, "%s: --schema, --values (at least once), and --output are required\n", name)
 		flags.PrintDefaults()
-		return inport.Request{}, false
+		return usecase.Request{}, false
 	}
 	if flags.NArg() != 0 {
 		_, _ = fmt.Fprintf(stderr, "%s: unexpected arguments: %s\n", name, strings.Join(flags.Args(), " "))
-		return inport.Request{}, false
+		return usecase.Request{}, false
 	}
-	return inport.Request{SchemaPath: *schemaPath, ValuesPaths: values, OutputPath: *outputPath, TemplatePath: *templatePath}, true
+	return usecase.Request{SchemaPath: *schemaPath, ValuesPaths: values, OutputPath: *outputPath, TemplatePath: *templatePath}, true
 }
 
 func usage(stderr io.Writer) {

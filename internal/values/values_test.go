@@ -1,4 +1,4 @@
-package yamlvalues_test
+package values_test
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/smedijan/helm-values-docs/internal/adapters/out/yamlvalues"
+	"github.com/smedijan/helm-values-docs/internal/values"
 )
 
 func TestLoadValuesMergesInOrder(t *testing.T) {
@@ -19,7 +19,7 @@ func TestLoadValuesMergesInOrder(t *testing.T) {
 	if err := os.WriteFile(override, []byte("image:\n  tag: new\nreplicas: 3\nitems: [c]\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got, err := yamlvalues.LoadValues([]string{base, override})
+	got, err := values.Load([]string{base, override})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestLoadValuesRejectsNonMappingRoot(t *testing.T) {
 	if err := os.WriteFile(path, []byte("- value\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err := yamlvalues.LoadValues([]string{path})
+	_, err := values.Load([]string{path})
 	if err == nil {
 		t.Fatal("LoadValues accepted a sequence root")
 	}

@@ -1,13 +1,13 @@
-package jsonschema_test
+package schema_test
 
 import (
 	"testing"
 
-	"github.com/smedijan/helm-values-docs/internal/adapters/out/jsonschema"
+	"github.com/smedijan/helm-values-docs/internal/schema"
 )
 
 func TestParseSchema(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{
+	model, err := schema.Parse([]byte(`{
 		"type":"object",
 		"required":["replicas"],
 		"properties":{
@@ -31,13 +31,13 @@ func TestParseSchema(t *testing.T) {
 }
 
 func TestParseRejectsInvalidSchema(t *testing.T) {
-	if _, err := jsonschema.Parse([]byte(`{"type":`)); err == nil {
+	if _, err := schema.Parse([]byte(`{"type":`)); err == nil {
 		t.Fatal("Parse accepted malformed JSON")
 	}
 }
 
 func TestParsePreservesOptionalSchemaDetails(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{
+	model, err := schema.Parse([]byte(`{
 		"description":"A chart setting",
 		"enum":["small","large"],
 		"examples":["small"],
@@ -65,7 +65,7 @@ func TestParseRejectsInvalidOptionalSchemaDetails(t *testing.T) {
 		{name: "items must be an object", data: `{"items":[]}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if _, err := jsonschema.Parse([]byte(tc.data)); err == nil {
+			if _, err := schema.Parse([]byte(tc.data)); err == nil {
 				t.Fatalf("Parse(%s) accepted invalid input", tc.data)
 			}
 		})
@@ -73,7 +73,7 @@ func TestParseRejectsInvalidOptionalSchemaDetails(t *testing.T) {
 }
 
 func TestParseSupportsAdditionalPropertiesAndLocalReferences(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{
+	model, err := schema.Parse([]byte(`{
 		"properties": {
 			"mounts": {"type":"object", "additionalProperties":{"$ref":"#/definitions/mount"}},
 			"labels": {"type":"object", "additionalProperties":true}
@@ -97,7 +97,7 @@ func TestParseSupportsAdditionalPropertiesAndLocalReferences(t *testing.T) {
 }
 
 func TestParseSupportsOneOfAndNot(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{
+	model, err := schema.Parse([]byte(`{
 		"oneOf":[{"type":"string","minLength":1},{"type":"object","additionalProperties":true}],
 		"not":{"required":["user","users"]}
 	}`))
@@ -117,14 +117,14 @@ func TestParseSupportsOneOfAndNot(t *testing.T) {
 
 func TestParseRejectsInvalidOneOfAndNot(t *testing.T) {
 	for _, input := range []string{`{"oneOf":[]}`, `{"oneOf":["string"]}`, `{"not":[]}`} {
-		if _, err := jsonschema.Parse([]byte(input)); err == nil {
+		if _, err := schema.Parse([]byte(input)); err == nil {
 			t.Errorf("Parse(%s) accepted invalid schema", input)
 		}
 	}
 }
 
 func TestParseReportsEveryUnsupportedKeyword(t *testing.T) {
-	model, err := jsonschema.Parse([]byte(`{
+	model, err := schema.Parse([]byte(`{
 		"additionalProperties":false,
 		"patternProperties":{"^x-":{"type":"string"}},
 		"minProperties":1,
