@@ -58,7 +58,7 @@ local full_checks = (fast_checks) {
     }
     ["go-imp"] {
         glob = List("**/*.go", ".imp.yaml")
-        check = "imp run --silent"
+        check = "imp run"
     }
     ["go-sec"] = (Builtins.go_sec) {
         glob = "**/*.go"

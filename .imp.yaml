@@ -1,4 +1,5 @@
 run:
+  output-statuses: lc
   threshold:
     efficacy: 80
     mutant-coverage: 80

@@ -38,7 +38,7 @@ jobs:
           tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP/imp" imp
           echo "$RUNNER_TEMP/imp" >> "$GITHUB_PATH"
       - name: Run imp
-        run: imp run --silent
+        run: imp run
 
   lint:
     name: Lint and vet
