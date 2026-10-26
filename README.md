@@ -76,7 +76,9 @@ path.
 `internal/usecase` owns the render and check flows. Each use case composes the
 schema, values, Markdown, and filesystem packages directly; `internal/cli`
 parses commands and invokes those use cases. `internal/domain` contains the
-schema model. The executable entry point is `cmd/hvd`.
+schema model. The executable entry point is `cmd/hvd`. `.go-arch-lint.yml`
+keeps imports pointed toward use cases and restricts third-party dependencies to
+the packages that own them; `hk check` enforces these rules.
 
 ## Development
 

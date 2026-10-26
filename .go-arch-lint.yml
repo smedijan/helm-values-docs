@@ -1,0 +1,24 @@
+version: 3
+workdir: internal
+excludeFiles: [".*_test\\.go$"]
+vendors:
+  yaml: { in: gopkg.in/yaml.v3 }
+components:
+  domain: { in: domain }
+  usecase: { in: usecase }
+  cli: { in: cli }
+  schema: { in: schema }
+  values: { in: values }
+  markdown: { in: markdown }
+  filesystem: { in: filesystem }
+deps:
+  cli:
+    mayDependOn: [usecase]
+  usecase:
+    mayDependOn: [domain, schema, values, markdown, filesystem]
+  schema:
+    mayDependOn: [domain]
+  markdown:
+    mayDependOn: [domain]
+  values:
+    canUse: [yaml]
