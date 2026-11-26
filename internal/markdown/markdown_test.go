@@ -71,6 +71,22 @@ func TestRenderContentsUsesReadableDynamicMapNames(t *testing.T) {
 	}
 }
 
+func TestRenderConsecutiveMaps(t *testing.T) {
+	model, err := schema.Parse([]byte(`{"properties":{"stages":{"type":"object","additionalProperties":{"type":"object","additionalProperties":{"type":"object","properties":{"color":{"type":"string","description":"Stage UI color."}}}}}}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := markdown.Render(model, map[string]any{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"- [color](#stages_stage_stage_object_color)", "<a id=\"stages_stage_stage_object_color\"></a>", "| Description | Stage UI color. |"} {
+		if !strings.Contains(string(got), want) {
+			t.Errorf("missing %q:\n%s", want, got)
+		}
+	}
+}
+
 func TestRenderLooksUpPropertyNamesContainingDots(t *testing.T) {
 	model, err := schema.Parse([]byte(`{"properties":{"a.b":{"type":"string"}}}`))
 	if err != nil {

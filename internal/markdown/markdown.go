@@ -188,7 +188,7 @@ func children(schema *domain.Schema, parentName string) []childProperty {
 	for _, name := range names {
 		result = append(result, childProperty{name: name, schema: schema.Properties[name], required: schema.Required[name]})
 	}
-	if schema.AdditionalSchema != nil && len(schema.AdditionalSchema.Properties) > 0 {
+	if schema.AdditionalSchema != nil && (len(schema.AdditionalSchema.Properties) > 0 || schema.AdditionalSchema.AdditionalSchema != nil) {
 		name := additionalName(parentName, schema.AdditionalSchema)
 		result = append(result, childProperty{name: name, schema: schema.AdditionalSchema, required: schema.Required[name]})
 	}
